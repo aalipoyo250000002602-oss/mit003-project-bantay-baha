@@ -31,32 +31,50 @@ const kindLabel: Record<UploadManifestItem['kind'], string> = {
   uploaded: 'Original Upload',
 };
 
+
 function ExistingUploadsPanel() {
-  const [items, setItems] = useState<UploadManifestDisplayItem[]>([]);
+  const [filteredUploads, setFilteredUploads] = useState<UploadManifestDisplayItem[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
 
   useEffect(() => {
+    let isMounted = true;
     const controller = new AbortController();
 
-    fetch('./uploads-manifest.json', { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(`Unable to load upload manifest: ${response.status}`);
+    // Fetch both manifest and reports-data.json
+    Promise.all([
+      fetch('./uploads-manifest.json', { signal: controller.signal })
+        .then((res) => {
+          if (!res.ok) throw new Error('Unable to load upload manifest');
+          return res.json();
+        }),
+      fetch('./reports-data.json', { signal: controller.signal })
+        .then((res) => {
+          if (!res.ok) throw new Error('Unable to load reports-data.json');
+          return res.json();
+        })
+    ])
+      .then(([manifest, reportsData]) => {
+        const manifestItems = Array.isArray(manifest.items) ? manifest.items : [];
+        const referencedUrls = new Set(
+          (Array.isArray(reportsData.items) ? reportsData.items : [])
+            .map((r) => r.processedVideoUrl?.replace(/^\.\/?/, './'))
+        );
+        const filtered = manifestItems.filter((item) => referencedUrls.has(item.url?.replace(/^\.\/?/, './')));
+        if (isMounted) {
+          setFilteredUploads(filtered);
+          syncSavedFloodReportsFromUploads(filtered);
+          window.dispatchEvent(new Event('flood-report-saved'));
+          setStatus('ready');
         }
-        return response.json() as Promise<{ items?: UploadManifestDisplayItem[] }>;
-      })
-      .then((payload) => {
-        const nextItems = Array.isArray(payload.items) ? payload.items : [];
-        setItems(nextItems);
-        syncSavedFloodReportsFromUploads(nextItems);
-        window.dispatchEvent(new Event('flood-report-saved'));
-        setStatus('ready');
       })
       .catch(() => {
-        setStatus('error');
+        if (isMounted) setStatus('error');
       });
 
-    return () => controller.abort();
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
   }, []);
 
   return (
@@ -77,13 +95,13 @@ function ExistingUploadsPanel() {
           </p>
         ) : null}
 
-        {status === 'ready' && items.length === 0 ? (
+        {status === 'ready' && filteredUploads.length === 0 ? (
           <p className="mt-4 text-sm text-muted-foreground">No uploaded videos are available yet.</p>
         ) : null}
 
-        {status === 'ready' && items.length > 0 ? (
+        {status === 'ready' && filteredUploads.length > 0 ? (
           <div className="mt-4 grid gap-3">
-            {items.map((item) => (
+            {filteredUploads.map((item) => (
               <article
                 key={item.fileName}
                 className="rounded-lg border bg-background p-3"
