@@ -1,0 +1,1 @@
+import{o as t,t as e,T as o,m as r}from"./index-BuXB0zMX.js";function s(){return e.jsx(o,{children:e.jsx(r,{})})}document.title="Project BANTAY-BAHA Reports";t.createRoot(document.getElementById("root")).render(e.jsx(s,{}));

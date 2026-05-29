@@ -17,6 +17,7 @@ function figmaAssetResolver() {
 }
 
 export default defineConfig({
+  base: './',
   plugins: [
     figmaAssetResolver(),
     // The React and Tailwind plugins are both required for Make, even if
@@ -38,6 +39,16 @@ export default defineConfig({
       '/uploads': {
         target: 'http://localhost:8787',
         changeOrigin: true,
+      },
+    },
+  },
+  build: {
+    outDir: 'docs',
+    emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        reports: path.resolve(__dirname, 'reports.html'),
       },
     },
   },
