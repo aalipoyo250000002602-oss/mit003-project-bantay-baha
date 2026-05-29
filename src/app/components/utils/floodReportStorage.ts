@@ -49,7 +49,7 @@ export type SavedFloodAnalysisReport = {
 
 type SaveFloodAnalysisPayload = Omit<SavedFloodAnalysisReport, 'id' | 'savedAt'>;
 
-const STORAGE_KEY = 'bantayBaha.savedFloodReports.v4';
+const STORAGE_KEY = 'bantayBaha.savedFloodReports.v5';
 const MAX_REPORTS = 150;
 
 const isBrowser = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
