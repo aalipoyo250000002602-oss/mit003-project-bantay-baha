@@ -55,11 +55,20 @@ function ExistingUploadsPanel() {
     ])
       .then(([manifest, reportsData]) => {
         const manifestItems = Array.isArray(manifest.items) ? manifest.items : [];
-        const referencedUrls = new Set(
-          (Array.isArray(reportsData.items) ? reportsData.items : [])
-            .map((r) => r.processedVideoUrl?.replace(/^\.\/?/, './'))
+        const reports = Array.isArray(reportsData.items) ? reportsData.items : [];
+        // Map processedVideoUrl to report fileName
+        const reportByUrl = new Map(
+          reports
+            .filter((r) => typeof r.processedVideoUrl === 'string' && typeof r.fileName === 'string')
+            .map((r) => [r.processedVideoUrl.replace(/^\.\/?/, './'), r.fileName])
         );
-        const filtered = manifestItems.filter((item) => referencedUrls.has(item.url?.replace(/^\.\/?/, './')));
+        // Only show items that are referenced, kind === 'processed', and use the report fileName
+        const filtered = manifestItems
+          .filter((item) => item.kind === 'processed' && reportByUrl.has(item.url?.replace(/^\.\/?/, './')))
+          .map((item) => ({
+            ...item,
+            fileName: reportByUrl.get(item.url.replace(/^\.\/?/, './')) || item.fileName,
+          }));
         if (isMounted) {
           setFilteredUploads(filtered);
           syncSavedFloodReportsFromUploads(filtered);
