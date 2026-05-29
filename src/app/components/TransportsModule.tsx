@@ -6,7 +6,9 @@ import { Badge } from './ui/badge';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from './ui/chart';
 import {
   readSavedFloodReports,
+  syncSavedFloodReportsFromUploads,
   updateSavedFloodReportFramePreviews,
+  type UploadManifestItem,
   type SavedFloodAnalysisReport,
   type SavedReportFramePreview,
 } from './utils/floodReportStorage';
@@ -178,6 +180,10 @@ interface TransportsModuleProps {
   onNavigateToModule?: (module: string) => void;
 }
 
+type UploadManifestEntry = UploadManifestItem & {
+  bytes?: number;
+};
+
 export function TransportsModule({ 
   onOpenCreateTrip,
   onOpenGenerateReport 
@@ -222,6 +228,31 @@ export function TransportsModule({
       window.removeEventListener('flood-report-saved', refreshSavedReports);
       window.removeEventListener('storage', refreshSavedReports);
     };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch('./uploads-manifest.json', { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) {
+          return null;
+        }
+        return response.json() as Promise<{ items?: UploadManifestEntry[] }>;
+      })
+      .then((payload) => {
+        if (!payload || !Array.isArray(payload.items)) {
+          return;
+        }
+
+        const next = syncSavedFloodReportsFromUploads(payload.items);
+        setSavedReports(next);
+      })
+      .catch(() => {
+        // Local-only mode can run without a generated manifest.
+      });
+
+    return () => controller.abort();
   }, []);
 
   const generateFramePreviewsFromVideo = async (videoUrl: string): Promise<SavedReportFramePreview[]> => {
