@@ -249,29 +249,50 @@ export function TransportsModule({
     });
   }, []);
 
+
+  // Filter uploads to only those referenced in reports-data.json
+  const [filteredUploads, setFilteredUploads] = useState<UploadManifestEntry[]>([]);
+  const [uploadsStatus, setUploadsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+
   useEffect(() => {
     const controller = new AbortController();
+    let isMounted = true;
 
-    fetch('./uploads-manifest.json', { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) {
-          return null;
-        }
-        return response.json() as Promise<{ items?: UploadManifestEntry[] }>;
-      })
-      .then((payload) => {
-        if (!payload || !Array.isArray(payload.items)) {
-          return;
+    Promise.all([
+      fetch('./reports-data.json', { signal: controller.signal }).then(r => r.ok ? r.json() : { items: [] }),
+      fetch('./uploads-manifest.json', { signal: controller.signal }).then(r => r.ok ? r.json() : { items: [] })
+    ])
+      .then(([reportsData, uploadsManifest]) => {
+        const reports = Array.isArray(reportsData.items) ? reportsData.items : [];
+        const manifest = Array.isArray(uploadsManifest.items) ? uploadsManifest.items : [];
+
+        // Build a set of referenced video file names
+        const referenced = new Set<string>();
+        for (const report of reports) {
+          if (report.processedVideoUrl) {
+            const match = report.processedVideoUrl.match(/([^/]+)$/);
+            if (match) referenced.add(match[1]);
+          }
+          if (report.videoOriginalName) {
+            referenced.add(report.videoOriginalName);
+          }
         }
 
-        const next = syncSavedFloodReportsFromUploads(payload.items);
-        setSavedReports(next);
+        // Filter manifest to only referenced files
+        const filtered = manifest.filter(item => referenced.has(item.fileName));
+        if (isMounted) {
+          setFilteredUploads(filtered);
+          setUploadsStatus('ready');
+        }
       })
       .catch(() => {
-        // Local-only mode can run without a generated manifest.
+        if (isMounted) setUploadsStatus('error');
       });
 
-    return () => controller.abort();
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
   }, []);
 
   useEffect(() => {
@@ -457,6 +478,33 @@ export function TransportsModule({
 
       <Card className="border-0 shadow-sm">
         <CardContent className="space-y-3">
+          <h2 className="text-xl font-semibold text-foreground">Existing Uploaded Results</h2>
+          {uploadsStatus === 'loading' && (
+            <p className="mt-4 text-sm text-muted-foreground">Loading existing uploads...</p>
+          )}
+          {uploadsStatus === 'error' && (
+            <p className="mt-4 text-sm text-destructive">Upload manifest was not found. Run the build command to regenerate report assets.</p>
+          )}
+          {uploadsStatus === 'ready' && filteredUploads.length === 0 && (
+            <p className="mt-4 text-sm text-muted-foreground">No uploaded videos are available yet.</p>
+          )}
+          {uploadsStatus === 'ready' && filteredUploads.length > 0 && (
+            <div className="mt-4 grid gap-3">
+              {filteredUploads.map((upload) => (
+                <article key={upload.fileName} className="rounded-lg border bg-background p-3">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                      {upload.kind}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{(upload.bytes / 1024 / 1024).toFixed(2)} MB</span>
+                    <span className="text-xs text-muted-foreground">{new Date(upload.modifiedAt).toLocaleString()}</span>
+                  </div>
+                  <p className="mb-2 text-sm font-medium text-foreground">{upload.fileName}</p>
+                  <video src={upload.url} controls className="w-full rounded shadow" />
+                </article>
+              ))}
+            </div>
+          )}
           {filteredSavedReports.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No matching saved reports. Try another file name or address.
