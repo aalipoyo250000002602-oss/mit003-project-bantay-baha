@@ -220,8 +220,9 @@ export const syncSavedFloodReportsFromUploads = (
   const existing = readSavedFloodReports();
   const existingByVideoUrl = new Set(existing.map((report) => normalizeProcessedVideoUrl(report.processedVideoUrl)));
 
+  // Only include 'processed' (not 'processed-web') for display on reports
   const candidates = uploadItems
-    .filter((item) => item.kind === 'processed-web' || item.kind === 'processed')
+    .filter((item) => item.kind === 'processed')
     .map((item) => ({
       fileName: item.fileName,
       processedVideoUrl: normalizeProcessedVideoUrl(item.url),
