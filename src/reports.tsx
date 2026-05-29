@@ -64,8 +64,8 @@ function ExistingUploadsPanel() {
         );
         // Only show items that are referenced, kind === 'processed', and use the report fileName
         const filtered = manifestItems
-          .filter((item) => item.kind === 'processed' && reportByUrl.has(item.url?.replace(/^\.\/?/, './')))
-          .map((item) => ({
+          .filter((item:any) => item.kind === 'processed' && reportByUrl.has(item.url?.replace(/^\.\/?/, './')))
+          .map((item:any) => ({
             ...item,
             fileName: reportByUrl.get(item.url.replace(/^\.\/?/, './')) || item.fileName,
           }));
