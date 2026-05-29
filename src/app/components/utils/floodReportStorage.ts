@@ -49,7 +49,7 @@ export type SavedFloodAnalysisReport = {
 
 type SaveFloodAnalysisPayload = Omit<SavedFloodAnalysisReport, 'id' | 'savedAt'>;
 
-const STORAGE_KEY = 'bantayBaha.savedFloodReports';
+const STORAGE_KEY = 'bantayBaha.savedFloodReports.v2';
 const MAX_REPORTS = 150;
 
 const isBrowser = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -65,6 +65,68 @@ const normalizeProcessedVideoUrl = (url: string) => {
   }
 
   return url;
+};
+
+const createImportedReport = (input: {
+  id: string;
+  fileName: string;
+  modifiedAt: string;
+  processedVideoUrl: string;
+}): SavedFloodAnalysisReport => ({
+  id: input.id,
+  fileName: input.fileName,
+  address: 'Imported from existing uploads',
+  dateTaken: input.modifiedAt.slice(0, 10),
+  savedAt: input.modifiedAt,
+  videoOriginalName: input.fileName,
+  processedVideoUrl: normalizeProcessedVideoUrl(input.processedVideoUrl),
+  frameLabel: 'F1',
+  frameTimestampSeconds: 0,
+  framePreviewImageUrl: '',
+  waterLevelTrend: 'Unknown',
+  debrisBlockages: 'Unknown',
+  waterTurbidity: 'Unknown',
+  boundaryPointsThisFrame: 0,
+  boundaryPointsTotal: 0,
+  boundaryAveragePerFrame: 0,
+  flowParticlesThisFrame: null,
+  flowParticlesTotal: null,
+  flowAveragePerFrame: null,
+  flowSpeedThisFrame: null,
+  flowAverageSpeed: null,
+  flowDataPoints: 0,
+  frameTimeline: [
+    {
+      frame: 1,
+      timestampSeconds: 0,
+      waterLevel: 'stable',
+      debris: 'none',
+      turbidity: 'clear',
+      boundaryPoints: 0,
+    },
+  ],
+  flowFrameMetrics: [],
+  framePreviews: [],
+});
+
+const HARD_CODED_EXISTING_REPORTS: SavedFloodAnalysisReport[] = [];
+
+const mergeReportsByVideoUrl = (...groups: SavedFloodAnalysisReport[][]): SavedFloodAnalysisReport[] => {
+  const merged = new Map<string, SavedFloodAnalysisReport>();
+
+  for (const group of groups) {
+    for (const report of group) {
+      const normalizedUrl = normalizeProcessedVideoUrl(report.processedVideoUrl);
+      if (!merged.has(normalizedUrl)) {
+        merged.set(normalizedUrl, {
+          ...report,
+          processedVideoUrl: normalizedUrl,
+        });
+      }
+    }
+  }
+
+  return [...merged.values()].sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime());
 };
 
 const compactReportForStorage = (report: SavedFloodAnalysisReport): SavedFloodAnalysisReport => {
@@ -105,23 +167,23 @@ const writeSavedFloodReports = (reports: SavedFloodAnalysisReport[]) => {
 
 export const readSavedFloodReports = (): SavedFloodAnalysisReport[] => {
   if (!isBrowser()) {
-    return [];
+    return HARD_CODED_EXISTING_REPORTS;
   }
 
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      return [];
+      return HARD_CODED_EXISTING_REPORTS;
     }
 
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) {
-      return [];
+      return HARD_CODED_EXISTING_REPORTS;
     }
 
-    return parsed as SavedFloodAnalysisReport[];
+    return mergeReportsByVideoUrl(parsed as SavedFloodAnalysisReport[], HARD_CODED_EXISTING_REPORTS);
   } catch {
-    return [];
+    return HARD_CODED_EXISTING_REPORTS;
   }
 };
 
@@ -169,46 +231,16 @@ export const syncSavedFloodReportsFromUploads = (
     return existing;
   }
 
-  const importedReports: SavedFloodAnalysisReport[] = candidates.map((item) => ({
-    id: crypto.randomUUID(),
-    fileName: item.fileName,
-    address: 'Imported from existing uploads',
-    dateTaken: item.modifiedAt.slice(0, 10),
-    savedAt: item.modifiedAt,
-    videoOriginalName: item.fileName,
-    processedVideoUrl: item.processedVideoUrl,
-    frameLabel: 'F1',
-    frameTimestampSeconds: 0,
-    framePreviewImageUrl: '',
-    waterLevelTrend: 'Unknown',
-    debrisBlockages: 'Unknown',
-    waterTurbidity: 'Unknown',
-    boundaryPointsThisFrame: 0,
-    boundaryPointsTotal: 0,
-    boundaryAveragePerFrame: 0,
-    flowParticlesThisFrame: null,
-    flowParticlesTotal: null,
-    flowAveragePerFrame: null,
-    flowSpeedThisFrame: null,
-    flowAverageSpeed: null,
-    flowDataPoints: 0,
-    frameTimeline: [
-      {
-        frame: 1,
-        timestampSeconds: 0,
-        waterLevel: 'stable',
-        debris: 'none',
-        turbidity: 'clear',
-        boundaryPoints: 0,
-      },
-    ],
-    flowFrameMetrics: [],
-    framePreviews: [],
-  }));
-
-  const next = [...importedReports, ...existing].sort(
-    (a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime(),
+  const importedReports: SavedFloodAnalysisReport[] = candidates.map((item) =>
+    createImportedReport({
+      id: crypto.randomUUID(),
+      fileName: item.fileName,
+      modifiedAt: item.modifiedAt,
+      processedVideoUrl: item.processedVideoUrl,
+    }),
   );
+
+  const next = mergeReportsByVideoUrl(importedReports, existing, HARD_CODED_EXISTING_REPORTS);
 
   writeSavedFloodReports(next);
 

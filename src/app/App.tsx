@@ -130,24 +130,6 @@ export default function App() {
       case 'transports':
         return <TransportsModule {...commonProps} />;
       
-      case 'vehicles':
-        return <VehiclesModule {...commonProps} />;
-      
-      case 'drivers':
-        return <DriversModule {...commonProps} />;
-      
-      case 'routes':
-        return <RoutesModule {...commonProps} />;
-      
-      case 'revenue':
-        return <RevenueModule {...commonProps} />;
-      
-      case 'logs':
-        return <LogsModule {...commonProps} />;
-      
-      case 'settings':
-        return <SettingsModule {...commonProps} />;
-      
       default:
         return <TransportsModule {...commonProps} />;
     }
