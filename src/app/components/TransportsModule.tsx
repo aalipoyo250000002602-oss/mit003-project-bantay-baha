@@ -483,7 +483,7 @@ export function TransportsModule({
             <p className="mt-4 text-sm text-muted-foreground">Loading existing uploads...</p>
           )}
           {uploadsStatus === 'error' && (
-            <p className="mt-4 text-sm text-destructive">To upload new asset, please install depencies on your local machine.</p>
+            <p className="mt-4 text-sm text-destructive">To upload and analyze new assets, please install the dependencies on your local machine.</p>
           )}
           {uploadsStatus === 'ready' && filteredUploads.length === 0 && (
             <p className="mt-4 text-sm text-muted-foreground">No uploaded videos are available yet.</p>
