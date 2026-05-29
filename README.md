@@ -1,9 +1,8 @@
 # Project BANTAY-BAHA: Flood Control Project Monitoring and Flood Surveillance System
-
-## 🌐 Live Demo [Click here to view the live site](https://aalipoyo250000002602-oss.github.io/mit003-project-bantay-baha/)
-
-
 ## Use Case Category : Public Safety / Disaster Risk Reduction and Management (DRRM)
+## 🌐 Live Demo of Reports [Click here to view the live site](https://aalipoyo250000002602-oss.github.io/mit003-project-bantay-baha/)
+
+
 <img width="955" height="1097" alt="image" src="https://github.com/user-attachments/assets/5b20a8f3-25fe-4cfe-aa3b-ee5fc4fe49fb" />
 
 ## Contributors
