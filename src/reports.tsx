@@ -2,14 +2,11 @@ import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ThemeProvider } from './app/components/ThemeProvider';
 import { TransportsModule } from './app/components/TransportsModule';
+import { syncSavedFloodReportsFromUploads, type UploadManifestItem } from './app/components/utils/floodReportStorage';
 import './styles/index.css';
 
-type UploadManifestItem = {
-  fileName: string;
+type UploadManifestDisplayItem = UploadManifestItem & {
   bytes: number;
-  modifiedAt: string;
-  kind: 'processed-web' | 'processed' | 'uploaded';
-  url: string;
 };
 
 const formatSize = (bytes: number) => {
@@ -34,7 +31,7 @@ const kindLabel: Record<UploadManifestItem['kind'], string> = {
 };
 
 function ExistingUploadsPanel() {
-  const [items, setItems] = useState<UploadManifestItem[]>([]);
+  const [items, setItems] = useState<UploadManifestDisplayItem[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
 
   useEffect(() => {
@@ -45,10 +42,13 @@ function ExistingUploadsPanel() {
         if (!response.ok) {
           throw new Error(`Unable to load upload manifest: ${response.status}`);
         }
-        return response.json() as Promise<{ items?: UploadManifestItem[] }>;
+        return response.json() as Promise<{ items?: UploadManifestDisplayItem[] }>;
       })
       .then((payload) => {
-        setItems(Array.isArray(payload.items) ? payload.items : []);
+        const nextItems = Array.isArray(payload.items) ? payload.items : [];
+        setItems(nextItems);
+        syncSavedFloodReportsFromUploads(nextItems);
+        window.dispatchEvent(new Event('flood-report-saved'));
         setStatus('ready');
       })
       .catch(() => {
