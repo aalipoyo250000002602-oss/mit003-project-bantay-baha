@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ThemeProvider } from './app/components/ThemeProvider';
 import { TransportsModule } from './app/components/TransportsModule';
+import { VehiclesModule } from './app/components/VehiclesModule';
 import { syncSavedFloodReportsFromUploads, type UploadManifestItem } from './app/components/utils/floodReportStorage';
 import './styles/index.css';
 
@@ -108,10 +109,45 @@ function ExistingUploadsPanel() {
 }
 
 function ReportsPage() {
+  const [activeView, setActiveView] = useState<'reports' | 'analyze'>('reports');
+
   return (
     <ThemeProvider>
-      <ExistingUploadsPanel />
-      <TransportsModule />
+      <section className="mx-auto w-full max-w-6xl px-6 pt-6">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveView('reports')}
+            className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
+              activeView === 'reports'
+                ? 'border-blue-600 bg-blue-600 text-white'
+                : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            Reports View
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView('analyze')}
+            className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
+              activeView === 'analyze'
+                ? 'border-blue-600 bg-blue-600 text-white'
+                : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            Analyze New Video
+          </button>
+        </div>
+      </section>
+
+      {activeView === 'reports' ? (
+        <>
+          <ExistingUploadsPanel />
+          <TransportsModule />
+        </>
+      ) : (
+        <VehiclesModule />
+      )}
     </ThemeProvider>
   );
 }

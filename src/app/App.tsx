@@ -129,9 +129,27 @@ export default function App() {
     switch (activeModule) {
       case 'transports':
         return <TransportsModule {...commonProps} />;
+
+      case 'vehicles':
+        return <VehiclesModule {...commonProps} />;
+
+      case 'drivers':
+        return <DriversModule {...commonProps} />;
+
+      case 'routes':
+        return <RoutesModule {...commonProps} />;
+
+      case 'revenue':
+        return <RevenueModule {...commonProps} />;
+
+      case 'logs':
+        return <LogsModule {...commonProps} />;
+
+      case 'settings':
+        return <SettingsModule {...commonProps} />;
       
       default:
-        return <TransportsModule {...commonProps} />;
+        return <VehiclesModule {...commonProps} />;
     }
   };
 
