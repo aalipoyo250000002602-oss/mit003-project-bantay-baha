@@ -1,27 +1,5 @@
 {
-  "generatedAt": "2026-05-29T15:10:38.750Z",
-  "total": 3,
-  "items": [
-    {
-      "fileName": "1780066636596-t2q76u-analytics-web.mp4",
-      "bytes": 9043306,
-      "modifiedAt": "2026-05-29T14:59:32.218Z",
-      "kind": "processed-web",
-      "url": "./uploads/1780066636596-t2q76u-analytics-web.mp4"
-    },
-    {
-      "fileName": "1780066636596-t2q76u-analytics.mp4",
-      "bytes": 34958877,
-      "modifiedAt": "2026-05-29T14:59:26.467Z",
-      "kind": "processed",
-      "url": "./uploads/1780066636596-t2q76u-analytics.mp4"
-    },
-    {
-      "fileName": "1780066636596-t2q76u.mp4",
-      "bytes": 2398257,
-      "modifiedAt": "2026-05-29T14:57:16.598Z",
-      "kind": "uploaded",
-      "url": "./uploads/1780066636596-t2q76u.mp4"
-    }
-  ]
+  "generatedAt": "2026-05-29T15:23:21.962Z",
+  "total": 0,
+  "items": []
 }
