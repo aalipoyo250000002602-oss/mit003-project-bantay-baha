@@ -37,7 +37,7 @@ export default function App() {
     document.title = 'Project BANTAY-BAHA';
   }, []);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activeModule, setActiveModule] = useState('vehicles');
+  const [activeModule, setActiveModule] = useState('transports');
   const [unsavedVideoPrompt, setUnsavedVideoPrompt] = useState<UnsavedProcessedVideoPrompt | null>(null);
 
   const handleDiscardProcessedVideo = () => {
@@ -149,7 +149,7 @@ export default function App() {
         return <SettingsModule {...commonProps} />;
       
       default:
-        return <VehiclesModule {...commonProps} />;
+        return <TransportsModule {...commonProps} />;
     }
   };
 

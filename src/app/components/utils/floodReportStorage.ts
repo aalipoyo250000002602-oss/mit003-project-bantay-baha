@@ -50,6 +50,7 @@ export type SavedFloodAnalysisReport = {
 type SaveFloodAnalysisPayload = Omit<SavedFloodAnalysisReport, 'id' | 'savedAt'>;
 
 const STORAGE_KEY = 'bantayBaha.savedFloodReports';
+const MAX_REPORTS = 150;
 
 const isBrowser = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 
@@ -64,6 +65,42 @@ const normalizeProcessedVideoUrl = (url: string) => {
   }
 
   return url;
+};
+
+const compactReportForStorage = (report: SavedFloodAnalysisReport): SavedFloodAnalysisReport => {
+  // Frame preview data URLs are large and can exceed localStorage limits.
+  return {
+    ...report,
+    framePreviewImageUrl: '',
+    framePreviews: [],
+  };
+};
+
+const writeSavedFloodReports = (reports: SavedFloodAnalysisReport[]) => {
+  if (!isBrowser()) {
+    return;
+  }
+
+  const boundedReports = reports.slice(0, MAX_REPORTS);
+
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(boundedReports));
+    return;
+  } catch {
+    // Retry with compacted payload when quota is exceeded.
+  }
+
+  const compactedReports = boundedReports.map((report) => compactReportForStorage(report));
+
+  // If storage is still tight, keep trimming oldest reports until write succeeds.
+  for (let keep = compactedReports.length; keep >= 1; keep -= 1) {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(compactedReports.slice(0, keep)));
+      return;
+    } catch {
+      // continue trimming
+    }
+  }
 };
 
 export const readSavedFloodReports = (): SavedFloodAnalysisReport[] => {
@@ -92,6 +129,8 @@ export const saveFloodAnalysisReport = (payload: SaveFloodAnalysisPayload): Save
   const report: SavedFloodAnalysisReport = {
     ...payload,
     processedVideoUrl: normalizeProcessedVideoUrl(payload.processedVideoUrl),
+    framePreviewImageUrl: '',
+    framePreviews: [],
     id: crypto.randomUUID(),
     savedAt: new Date().toISOString(),
   };
@@ -99,9 +138,7 @@ export const saveFloodAnalysisReport = (payload: SaveFloodAnalysisPayload): Save
   const existing = readSavedFloodReports();
   const next = [report, ...existing];
 
-  if (isBrowser()) {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  }
+  writeSavedFloodReports(next);
 
   return report;
 };
@@ -173,9 +210,7 @@ export const syncSavedFloodReportsFromUploads = (
     (a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime(),
   );
 
-  if (isBrowser()) {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  }
+  writeSavedFloodReports(next);
 
   return next;
 };
@@ -193,15 +228,14 @@ export const updateSavedFloodReportFramePreviews = (
 
   const updatedReport: SavedFloodAnalysisReport = {
     ...existing[reportIndex],
-    framePreviews,
+    // Keep previews in memory and avoid persisting heavy base64 blobs.
+    framePreviews: framePreviews.slice(0, 0),
   };
 
   const next = [...existing];
   next[reportIndex] = updatedReport;
 
-  if (isBrowser()) {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  }
+  writeSavedFloodReports(next);
 
   return updatedReport;
 };
