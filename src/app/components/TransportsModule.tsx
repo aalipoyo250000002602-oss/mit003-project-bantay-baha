@@ -233,6 +233,23 @@ export function TransportsModule({
   }, []);
 
   useEffect(() => {
+    const localReports = readSavedFloodReports();
+    if (localReports.length === 0) {
+      return;
+    }
+
+    fetch('/api/save-reports', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ reports: localReports }),
+    }).catch(() => {
+      // API may be unavailable on static-only hosting.
+    });
+  }, []);
+
+  useEffect(() => {
     const controller = new AbortController();
 
     fetch('./uploads-manifest.json', { signal: controller.signal })

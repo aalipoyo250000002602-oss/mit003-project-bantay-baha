@@ -172,6 +172,33 @@ const writeReportsData = (items) => {
   return next;
 };
 
+const normalizeIncomingReport = (incomingReport) => {
+  if (!incomingReport || typeof incomingReport !== 'object') {
+    return null;
+  }
+
+  if (typeof incomingReport.processedVideoUrl !== 'string' || !incomingReport.processedVideoUrl) {
+    return null;
+  }
+
+  const normalizedProcessedVideoUrl = incomingReport.processedVideoUrl.startsWith('/uploads/')
+    ? `./uploads/${incomingReport.processedVideoUrl.slice('/uploads/'.length)}`
+    : incomingReport.processedVideoUrl;
+
+  return {
+    ...incomingReport,
+    id: typeof incomingReport.id === 'string' && incomingReport.id
+      ? incomingReport.id
+      : `report-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    savedAt: typeof incomingReport.savedAt === 'string' && incomingReport.savedAt
+      ? incomingReport.savedAt
+      : new Date().toISOString(),
+    processedVideoUrl: normalizedProcessedVideoUrl,
+    framePreviewImageUrl: '',
+    framePreviews: [],
+  };
+};
+
 const server = createServer(async (req, res) => {
   if (!req.url) {
     sendJson(res, 400, { error: 'Invalid request URL.' });
@@ -301,34 +328,12 @@ const server = createServer(async (req, res) => {
   if (req.method === 'POST' && req.url === '/api/save-report') {
     try {
       const payload = await readJsonBody(req);
-      const incomingReport = payload?.report;
+      const sanitizedReport = normalizeIncomingReport(payload?.report);
 
-      if (!incomingReport || typeof incomingReport !== 'object') {
-        sendJson(res, 400, { error: 'Missing report in request body.' });
+      if (!sanitizedReport) {
+        sendJson(res, 400, { error: 'Invalid report payload.' });
         return;
       }
-
-      if (typeof incomingReport.processedVideoUrl !== 'string' || !incomingReport.processedVideoUrl) {
-        sendJson(res, 400, { error: 'report.processedVideoUrl is required.' });
-        return;
-      }
-
-      const normalizedProcessedVideoUrl = incomingReport.processedVideoUrl.startsWith('/uploads/')
-        ? `./uploads/${incomingReport.processedVideoUrl.slice('/uploads/'.length)}`
-        : incomingReport.processedVideoUrl;
-
-      const sanitizedReport = {
-        ...incomingReport,
-        id: typeof incomingReport.id === 'string' && incomingReport.id
-          ? incomingReport.id
-          : `report-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        savedAt: typeof incomingReport.savedAt === 'string' && incomingReport.savedAt
-          ? incomingReport.savedAt
-          : new Date().toISOString(),
-        processedVideoUrl: normalizedProcessedVideoUrl,
-        framePreviewImageUrl: '',
-        framePreviews: [],
-      };
 
       const existing = readReportsData();
       const nextItems = [
@@ -337,6 +342,41 @@ const server = createServer(async (req, res) => {
       ];
 
       const saved = writeReportsData(nextItems);
+      sendJson(res, 200, { ok: true, total: saved.total });
+    } catch (error) {
+      sendJson(res, 400, { error: `Invalid JSON payload: ${String(error)}` });
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/api/save-reports') {
+    try {
+      const payload = await readJsonBody(req);
+      const incomingReports = Array.isArray(payload?.reports) ? payload.reports : [];
+
+      const normalizedReports = incomingReports
+        .map((item) => normalizeIncomingReport(item))
+        .filter((item) => item !== null);
+
+      if (normalizedReports.length === 0) {
+        sendJson(res, 400, { error: 'No valid reports to save.' });
+        return;
+      }
+
+      const existing = readReportsData();
+      const merged = [...normalizedReports, ...existing.items];
+      const dedupedByVideo = [];
+      const seen = new Set();
+
+      for (const item of merged) {
+        if (seen.has(item.processedVideoUrl)) {
+          continue;
+        }
+        seen.add(item.processedVideoUrl);
+        dedupedByVideo.push(item);
+      }
+
+      const saved = writeReportsData(dedupedByVideo);
       sendJson(res, 200, { ok: true, total: saved.total });
     } catch (error) {
       sendJson(res, 400, { error: `Invalid JSON payload: ${String(error)}` });
