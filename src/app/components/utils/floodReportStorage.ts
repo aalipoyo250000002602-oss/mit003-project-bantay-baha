@@ -49,7 +49,7 @@ export type SavedFloodAnalysisReport = {
 
 type SaveFloodAnalysisPayload = Omit<SavedFloodAnalysisReport, 'id' | 'savedAt'>;
 
-const STORAGE_KEY = 'bantayBaha.savedFloodReports.v3';
+const STORAGE_KEY = 'bantayBaha.savedFloodReports.v4';
 const MAX_REPORTS = 150;
 
 const isBrowser = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -212,6 +212,8 @@ export type UploadManifestItem = {
   url: string;
 };
 
+export type PublishedSavedFloodReport = SavedFloodAnalysisReport;
+
 export const syncSavedFloodReportsFromUploads = (
   uploadItems: UploadManifestItem[],
 ): SavedFloodAnalysisReport[] => {
@@ -244,6 +246,29 @@ export const syncSavedFloodReportsFromUploads = (
 
   writeSavedFloodReports(next);
 
+  return next;
+};
+
+export const syncSavedFloodReportsFromPublishedData = (
+  reports: PublishedSavedFloodReport[],
+): SavedFloodAnalysisReport[] => {
+  if (!Array.isArray(reports) || reports.length === 0) {
+    return readSavedFloodReports();
+  }
+
+  const normalizedPublished = reports
+    .filter((report) => report && typeof report === 'object' && typeof report.processedVideoUrl === 'string')
+    .map((report) => ({
+      ...report,
+      processedVideoUrl: normalizeProcessedVideoUrl(report.processedVideoUrl),
+      framePreviewImageUrl: '',
+      framePreviews: [],
+    }));
+
+  const existing = readSavedFloodReports();
+  const next = mergeReportsByVideoUrl(normalizedPublished, existing, HARD_CODED_EXISTING_REPORTS);
+
+  writeSavedFloodReports(next);
   return next;
 };
 

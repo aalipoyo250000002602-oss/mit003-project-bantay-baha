@@ -1,5 +1,27 @@
 {
-  "generatedAt": "2026-05-29T15:27:52.139Z",
-  "total": 0,
-  "items": []
+  "generatedAt": "2026-05-29T15:56:25.610Z",
+  "total": 3,
+  "items": [
+    {
+      "fileName": "1780069570013-7imlh8-analytics-web.mp4",
+      "bytes": 9043306,
+      "modifiedAt": "2026-05-29T15:48:38.788Z",
+      "kind": "processed-web",
+      "url": "./uploads/1780069570013-7imlh8-analytics-web.mp4"
+    },
+    {
+      "fileName": "1780069570013-7imlh8-analytics.mp4",
+      "bytes": 34958877,
+      "modifiedAt": "2026-05-29T15:48:32.591Z",
+      "kind": "processed",
+      "url": "./uploads/1780069570013-7imlh8-analytics.mp4"
+    },
+    {
+      "fileName": "1780069570013-7imlh8.mp4",
+      "bytes": 2398257,
+      "modifiedAt": "2026-05-29T15:46:10.017Z",
+      "kind": "uploaded",
+      "url": "./uploads/1780069570013-7imlh8.mp4"
+    }
+  ]
 }

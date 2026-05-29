@@ -11,6 +11,9 @@ const publicUploadsDir = path.join(rootDir, 'public', 'uploads');
 const docsUploadsDir = path.join(rootDir, 'docs', 'uploads');
 const publicManifestPath = path.join(rootDir, 'public', 'uploads-manifest.json');
 const docsManifestPath = path.join(rootDir, 'docs', 'uploads-manifest.json');
+const sourceReportsDataPath = path.join(rootDir, 'reports-data.json');
+const publicReportsDataPath = path.join(rootDir, 'public', 'reports-data.json');
+const docsReportsDataPath = path.join(rootDir, 'docs', 'reports-data.json');
 
 const allowedExtensions = new Set(['.mp4', '.mov', '.avi', '.mkv']);
 
@@ -44,11 +47,26 @@ const readManifestItems = (manifestPath) => {
 
 const arraysEqual = (a, b) => a.length === b.length && a.every((item, index) => item === b[index]);
 
+const readReportsDataItems = (filePath) => {
+  if (!fs.existsSync(filePath)) {
+    return [];
+  }
+
+  const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  const items = Array.isArray(parsed?.items) ? parsed.items : [];
+  return items
+    .map((item) => `${item?.processedVideoUrl ?? ''}|${item?.fileName ?? ''}|${item?.address ?? ''}|${item?.dateTaken ?? ''}|${item?.savedAt ?? ''}`)
+    .sort((a, b) => a.localeCompare(b));
+};
+
 const uploads = readFiles(uploadsDir);
 const publicUploads = readFiles(publicUploadsDir);
 const docsUploads = readFiles(docsUploadsDir);
 const publicManifestItems = readManifestItems(publicManifestPath);
 const docsManifestItems = readManifestItems(docsManifestPath);
+const sourceReportsDataItems = readReportsDataItems(sourceReportsDataPath);
+const publicReportsDataItems = readReportsDataItems(publicReportsDataPath);
+const docsReportsDataItems = readReportsDataItems(docsReportsDataPath);
 
 const checks = [
   {
@@ -74,6 +92,18 @@ const checks = [
     ok: arraysEqual(uploads, docsManifestItems),
     left: uploads,
     right: docsManifestItems,
+  },
+  {
+    name: 'reports-data source -> public/reports-data.json',
+    ok: arraysEqual(sourceReportsDataItems, publicReportsDataItems),
+    left: sourceReportsDataItems,
+    right: publicReportsDataItems,
+  },
+  {
+    name: 'reports-data source -> docs/reports-data.json',
+    ok: arraysEqual(sourceReportsDataItems, docsReportsDataItems),
+    left: sourceReportsDataItems,
+    right: docsReportsDataItems,
   },
 ];
 

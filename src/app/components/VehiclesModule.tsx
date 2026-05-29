@@ -1189,7 +1189,7 @@ export function VehiclesModule() {
     }
   };
 
-  const handleSaveReport = () => {
+  const handleSaveReport = async () => {
     if (!analysisResult || !processedVideoUrl || !activeFrame) {
       setSaveErrorMessage('Analyze a video first before saving a report.');
       setSaveStatusMessage(null);
@@ -1204,7 +1204,7 @@ export function VehiclesModule() {
 
     const selectedFramePreview = framePreviews[selectedFrameIndex];
 
-    saveFloodAnalysisReport({
+    const savedReport = saveFloodAnalysisReport({
       fileName: saveFileName.trim(),
       address: saveAddress.trim(),
       dateTaken: saveDateTaken,
@@ -1245,10 +1245,29 @@ export function VehiclesModule() {
       })),
     });
 
+    let persistedToLocalFile = false;
+    try {
+      const response = await fetch('/api/save-report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ report: savedReport }),
+      });
+
+      persistedToLocalFile = response.ok;
+    } catch {
+      persistedToLocalFile = false;
+    }
+
     window.dispatchEvent(new Event('flood-report-saved'));
     clearVideoAnalysisDraft();
     setSaveErrorMessage(null);
-    setSaveStatusMessage('Report saved. Check Flood prone areas page.');
+    setSaveStatusMessage(
+      persistedToLocalFile
+        ? 'Report saved and synced to reports-data.json.'
+        : 'Report saved in browser only. Start API (npm run dev:api) to sync to reports-data.json.',
+    );
   };
 
   useEffect(() => {

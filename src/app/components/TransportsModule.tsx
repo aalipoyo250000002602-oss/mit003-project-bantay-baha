@@ -6,8 +6,10 @@ import { Badge } from './ui/badge';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from './ui/chart';
 import {
   readSavedFloodReports,
+  syncSavedFloodReportsFromPublishedData,
   syncSavedFloodReportsFromUploads,
   updateSavedFloodReportFramePreviews,
+  type PublishedSavedFloodReport,
   type UploadManifestItem,
   type SavedFloodAnalysisReport,
   type SavedReportFramePreview,
@@ -250,6 +252,31 @@ export function TransportsModule({
       })
       .catch(() => {
         // Local-only mode can run without a generated manifest.
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch('./reports-data.json', { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) {
+          return null;
+        }
+        return response.json() as Promise<{ items?: PublishedSavedFloodReport[] }>;
+      })
+      .then((payload) => {
+        if (!payload || !Array.isArray(payload.items)) {
+          return;
+        }
+
+        const next = syncSavedFloodReportsFromPublishedData(payload.items);
+        setSavedReports(next);
+      })
+      .catch(() => {
+        // Published reports metadata is optional in local-only mode.
       });
 
     return () => controller.abort();

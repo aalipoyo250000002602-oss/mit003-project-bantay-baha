@@ -8,8 +8,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 const uploadsDir = path.join(rootDir, 'uploads');
+const reportsDataPath = path.join(rootDir, 'reports-data.json');
 
 fs.mkdirSync(uploadsDir, { recursive: true });
+
+if (!fs.existsSync(reportsDataPath)) {
+  fs.writeFileSync(
+    reportsDataPath,
+    JSON.stringify({ generatedAt: new Date().toISOString(), total: 0, items: [] }, null, 2),
+  );
+}
 
 const port = Number(process.env.API_PORT || 8787);
 const maxBodyBytes = 350 * 1024 * 1024;
@@ -136,6 +144,34 @@ const transcodeForWeb = (inputPath, outputPath) =>
     ffmpeg.on('close', (code) => resolve(code === 0));
   });
 
+const readReportsData = () => {
+  if (!fs.existsSync(reportsDataPath)) {
+    return { generatedAt: new Date().toISOString(), total: 0, items: [] };
+  }
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(reportsDataPath, 'utf8'));
+    const items = Array.isArray(parsed?.items) ? parsed.items : [];
+    return {
+      generatedAt: typeof parsed?.generatedAt === 'string' ? parsed.generatedAt : new Date().toISOString(),
+      total: items.length,
+      items,
+    };
+  } catch {
+    return { generatedAt: new Date().toISOString(), total: 0, items: [] };
+  }
+};
+
+const writeReportsData = (items) => {
+  const next = {
+    generatedAt: new Date().toISOString(),
+    total: items.length,
+    items,
+  };
+  fs.writeFileSync(reportsDataPath, JSON.stringify(next, null, 2));
+  return next;
+};
+
 const server = createServer(async (req, res) => {
   if (!req.url) {
     sendJson(res, 400, { error: 'Invalid request URL.' });
@@ -153,6 +189,11 @@ const server = createServer(async (req, res) => {
 
   if (req.method === 'GET' && req.url === '/api/health') {
     sendJson(res, 200, { ok: true });
+    return;
+  }
+
+  if (req.method === 'GET' && req.url === '/api/reports') {
+    sendJson(res, 200, readReportsData());
     return;
   }
 
@@ -251,6 +292,52 @@ const server = createServer(async (req, res) => {
           });
         });
       });
+    } catch (error) {
+      sendJson(res, 400, { error: `Invalid JSON payload: ${String(error)}` });
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/api/save-report') {
+    try {
+      const payload = await readJsonBody(req);
+      const incomingReport = payload?.report;
+
+      if (!incomingReport || typeof incomingReport !== 'object') {
+        sendJson(res, 400, { error: 'Missing report in request body.' });
+        return;
+      }
+
+      if (typeof incomingReport.processedVideoUrl !== 'string' || !incomingReport.processedVideoUrl) {
+        sendJson(res, 400, { error: 'report.processedVideoUrl is required.' });
+        return;
+      }
+
+      const normalizedProcessedVideoUrl = incomingReport.processedVideoUrl.startsWith('/uploads/')
+        ? `./uploads/${incomingReport.processedVideoUrl.slice('/uploads/'.length)}`
+        : incomingReport.processedVideoUrl;
+
+      const sanitizedReport = {
+        ...incomingReport,
+        id: typeof incomingReport.id === 'string' && incomingReport.id
+          ? incomingReport.id
+          : `report-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        savedAt: typeof incomingReport.savedAt === 'string' && incomingReport.savedAt
+          ? incomingReport.savedAt
+          : new Date().toISOString(),
+        processedVideoUrl: normalizedProcessedVideoUrl,
+        framePreviewImageUrl: '',
+        framePreviews: [],
+      };
+
+      const existing = readReportsData();
+      const nextItems = [
+        sanitizedReport,
+        ...existing.items.filter((item) => item.processedVideoUrl !== sanitizedReport.processedVideoUrl),
+      ];
+
+      const saved = writeReportsData(nextItems);
+      sendJson(res, 200, { ok: true, total: saved.total });
     } catch (error) {
       sendJson(res, 400, { error: `Invalid JSON payload: ${String(error)}` });
     }
